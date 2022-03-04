@@ -35,7 +35,7 @@
 
 struct net_device {
     struct net_device *next;
-    struct net_iface *iface;
+    struct net_iface *ifaces;
     unsigned int index;
     char name[IFNAMSIZ];
     uint16_t type;
