@@ -28,7 +28,7 @@ struct ip_hdr {
  struct ip_protocol {
      struct ip_protocol *next;
       uint8_t type;
-      void (*handler)(const uint8_t *data, size_t len, ip_addr_t str, ip_addr_t dst, struct ip_iface *iface);
+      void (*handler)(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct ip_iface *iface);
  };
 
 const ip_addr_t IP_ADDR_ANY       = 0x00000000;
@@ -134,7 +134,25 @@ ip_iface_select(ip_addr_t addr)
  int
  ip_protocol_register(uint8_t type, void (*handler)(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct ip_iface *iface))
  {
-     
+     struct ip_protocol *entry;
+     for (entry = protocols; entry; entry = entry->next) {
+         if (entry->type == type) {
+             errorf("already exists, type=%u", entry->type);
+             return -1;
+         }
+     }
+     entry = memory_alloc(sizeof(*entry));
+     if (!entry) {
+         errorf("memory_alloc() failure");
+         return -1;
+     }
+     entry->type = type;
+     entry->handler = handler;
+     entry->next = protocols;
+     protocols = entry;
+
+     infof("registered, type=%u", entry->type);
+     return 0;
  }
 
 char *
@@ -234,6 +252,14 @@ ip_input(const uint8_t *data, size_t len, struct net_device *dev)
 
     debugf("dev=%s, iface=%s, protocol=%u, total=%u", dev->name, ip_addr_ntop(iface->unicast, addr, sizeof(addr)), hdr->protocol, total);
     ip_dump(data, total);
+
+    struct ip_protocol *entry;
+    for (entry = protocols; entry; entry = entry->next) {
+        if (entry->type == hdr->protocol) {
+            entry->handler(data, len, hdr->src, hdr->dst, iface);
+            return;
+        }
+    }
 }
 
 static int
