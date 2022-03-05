@@ -60,15 +60,15 @@ icmp_dump(const uint8_t *data, size_t len)
 
     flockfile(stderr);
     hdr = (struct icmp_hdr *)data;
-    fprintf(stderr, "  type: %u (%s)\n", hdr->type, icmp_type_ntoa(hdr->type));
-    fprintf(stderr, "  code: %u\n", hdr->code);
-    fprintf(stderr, "  sum: 0x%04x\n", ntoh16(hdr->sum)); 
+    fprintf(stderr, "       type: %u (%s)\n", hdr->type, icmp_type_ntoa(hdr->type));
+    fprintf(stderr, "       code: %u\n", hdr->code);
+    fprintf(stderr, "        sum: 0x%04x\n", ntoh16(hdr->sum)); 
     switch (hdr->type) {
     case ICMP_TYPE_ECHOREPLY:
     case ICMP_TYPE_ECHO:
         echo = (struct icmp_echo *)hdr;
-        fprintf(stderr, "   id: %u\n", ntoh16(echo->id));
-        fprintf(stderr, "   seq: %u\n", ntoh16(echo->seq));
+        fprintf(stderr, "         id: %u\n", ntoh16(echo->id));
+        fprintf(stderr, "        seq: %u\n", ntoh16(echo->seq));
         break;
     default:
         fprintf(stderr, "   value: 0x%08x\n", ntoh32(hdr->values));
@@ -95,18 +95,44 @@ icmp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct
     if (cksum16((uint16_t *)data, len, 0) != 0) {
         debugf("icmp_hdr type:%u, code:%u, sum:%04x",hdr->type, hdr->code, hdr->sum);
         errorf("check sum is failure sum:0x%04x", hdr->sum);
-        return;
+        return; 
     }
 
     debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)), ip_addr_ntop(dst, addr2, sizeof(addr2)), len);
-    // debugdump(data, len);
     icmp_dump(data, len);
+    switch (hdr->type) {
+    case ICMP_TYPE_ECHO:
+        icmp_output(ICMP_TYPE_ECHOREPLY, hdr->code, hdr->values, (uint8_t *)(hdr + 1), len - sizeof(*hdr), iface->unicast, src);
+        break;
+    default:
+         break;
+    }
 }
 
  int
  icmp_output(uint8_t type, uint8_t code, uint32_t values, const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst)
  {
+    uint8_t buf[ICMP_BUFSIZ];
+    struct icmp_hdr *hdr;
+    size_t msg_len;
+    char addr1[IP_ADDR_STR_LEN];
+    char addr2[IP_ADDR_STR_LEN];
 
+    hdr = (struct icmp_hdr *)buf;
+
+    hdr->type = type;
+    hdr->code = code;
+    hdr->sum = 0; 
+    // hdr->values = hton32(values);
+    hdr->values = values;
+    memcpy(hdr+1, data, len);
+    msg_len = sizeof(*hdr) + len;
+    hdr->sum = cksum16((uint16_t *)hdr, msg_len, 0);
+
+    debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)), ip_addr_ntop(dst, addr2, sizeof(addr2)), msg_len);
+    icmp_dump((uint8_t *)hdr, msg_len);
+
+    return ip_output(IP_PROTOCOL_ICMP, (uint8_t *)hdr, msg_len, src, dst);
  }
 
 int

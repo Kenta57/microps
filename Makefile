@@ -19,6 +19,8 @@ TESTS = test/step0.exe \
         test/step8.exe \
         test/step9.exe \
         test/step10.exe \
+        test/step11.exe \
+
 
 
 
