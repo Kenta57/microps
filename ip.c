@@ -25,10 +25,17 @@ struct ip_hdr {
     uint8_t options[];
 };
 
+ struct ip_protocol {
+     struct ip_protocol *next;
+      uint8_t type;
+      void (*handler)(const uint8_t *data, size_t len, ip_addr_t str, ip_addr_t dst, struct ip_iface *iface);
+ };
+
 const ip_addr_t IP_ADDR_ANY       = 0x00000000;
 const ip_addr_t IP_ADDR_BROADCAST = 0xffffffff;
 
 static struct ip_iface *ifaces;
+static struct ip_protocol *protocols;
 
 int
 ip_addr_pton(const char *p, ip_addr_t *n)
@@ -123,6 +130,12 @@ ip_iface_select(ip_addr_t addr)
     }
     return NULL;
 }
+
+ int
+ ip_protocol_register(uint8_t type, void (*handler)(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct ip_iface *iface))
+ {
+     
+ }
 
 char *
 ip_addr_ntop(ip_addr_t n, char *p, size_t size)
@@ -244,7 +257,7 @@ ip_output_device(struct ip_iface *iface, const uint8_t *data, size_t len, ip_add
 static ssize_t
 ip_output_core(struct ip_iface *iface, uint8_t protocol, const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, uint16_t id, uint16_t offset)
 {
-    uint8_t buf[IP_TOTAL_SIZE_MAX];
+    uint8_t buf[IP_TOTAL_SIZE_MAX];  //   (8bit = 1byte) initialize IP_TOTAL_SIZE_MAX[byte] 
     struct ip_hdr *hdr;
     uint16_t hlen, total;
     char addr[IP_ADDR_STR_LEN];
@@ -259,7 +272,7 @@ ip_output_core(struct ip_iface *iface, uint8_t protocol, const uint8_t *data, si
     total = IP_HDR_SIZE_MIN + (uint16_t)len;
     hdr->total = hton16(total);
     hdr->id = hton16(id);
-    
+    hdr->offset = 0x0000;
     hdr->ttl = 255;
     hdr->protocol = protocol;
     hdr->sum = 0;
@@ -268,7 +281,7 @@ ip_output_core(struct ip_iface *iface, uint8_t protocol, const uint8_t *data, si
     hdr->sum = cksum16((uint16_t *)hdr, hlen, 0);
 
     // memory_alloc(sizeof(*hdr)+IP_HDR_SIZE_MIN);
-    memcpy(hdr+1, data, len);
+    memcpy(hdr+hlen, data, len);
 
     debugf("dev=%s, dst=%s, protocol=%u, len=%u",
         NET_IFACE(iface)->dev->name, ip_addr_ntop(dst, addr, sizeof(addr)), protocol, total);
