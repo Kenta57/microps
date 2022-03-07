@@ -175,6 +175,27 @@ arp_cache_insert(ip_addr_t pa, const uint8_t *ha)
     return cache;
 }
 
+static int
+arp_request(struct net_iface *iface, ip_addr_t tpa)
+{
+    struct arp_ether_ip request;
+
+    request.hdr.hrd = hton16(ARP_HRD_ETHER);
+    request.hdr.pro = hton16(ARP_PRO_IP);
+    request.hdr.hln = ETHER_ADDR_LEN;
+    request.hdr.pln = IP_ADDR_LEN;
+    request.hdr.op = hton16(ARP_OP_REQUEST);
+
+    memcpy(&request.spa, &((struct ip_iface *)iface)->unicast, IP_ADDR_LEN);
+    memcpy(&request.sha, iface->dev->addr, ETHER_ADDR_LEN);
+    memcpy(&request.tpa, &tpa, IP_ADDR_LEN);
+    // memcpy(&reply.tha, tha, ETHER_ADDR_LEN);
+
+    debugf("dev=%s, len=%zu", iface->dev->name, sizeof(request));
+    arp_dump((uint8_t *)&request, sizeof(request));
+    return net_device_output(iface->dev, NET_PROTOCOL_TYPE_ARP, (uint8_t *)&request, sizeof(request), iface->dev->broadcast);
+}
+
 static int 
 arp_reply(struct net_iface *iface, const uint8_t *tha, ip_addr_t tpa, const uint8_t *dst)
 {
@@ -257,9 +278,25 @@ arp_resolve(struct net_iface *iface, ip_addr_t pa, uint8_t *ha)
     mutex_lock(&mutex);
     caches = arp_cache_select(pa);
     if (!caches) {
-        debugf("cache not found, pa=%s", ip_addr_ntop(pa, addr1, sizeof(addr1)));
+        // debugf("cache not found, pa=%s", ip_addr_ntop(pa, addr1, sizeof(addr1)));
+        // mutex_unlock(&mutex);
+        // return ARP_RESOLVE_ERROR;
+        caches = arp_cache_alloc();
+        if (!caches) {
+            errorf("arp_cache_alloc() failure");
+            return ARP_RESOLVE_ERROR;
+        }
+        caches->state = ARP_CACHE_STATE_INCOMPLETE;
+        caches->pa = pa;
+        gettimeofday(&(caches->timestamp), NULL);
         mutex_unlock(&mutex);
-        return ARP_RESOLVE_ERROR;
+        arp_request(iface, pa);
+        return ARP_RESOLVE_INCOMPLETE;
+    }
+    if (caches->state == ARP_CACHE_STATE_INCOMPLETE) {
+        mutex_unlock(&mutex);
+        arp_request(iface, pa);
+        return ARP_RESOLVE_INCOMPLETE;
     }
     memcpy(ha, caches->ha, ETHER_ADDR_LEN);
     mutex_unlock(&mutex);
