@@ -5,9 +5,17 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "platform.h"
+
 #include "util.h"
 #include "ip.h"
 #include "udp.h"
+
+#define UDP_PCB_SIZE 16
+
+#define UDP_PCB_STATE_FREE 0
+#define UDP_PCB_STATE_OPEN 1
+#define UDP_PCB_STATE_CLOSING 2
 
 struct pseudo_hdr {
     uint32_t src;
@@ -22,6 +30,18 @@ struct udp_hdr {
     uint16_t dst;
     uint16_t len;
     uint16_t sum;
+};
+
+struct udp_pcg {
+    int state;
+    struct ip_endpoint local;
+    struct queue_head queues;
+};
+
+struct udp_queue_entry {
+    struct ip_endpoint foreign;
+    uint16_t len;
+    uint8_t data[];
 };
 
 static void
@@ -39,6 +59,36 @@ udp_dump(const uint8_t *data, size_t len)
     hexdump(stderr, data, len);
 #endif
     funlockfile(stderr);
+}
+
+static struct udp_pcb *
+udp_pcb_alloc(void)
+{
+
+}
+
+static void
+udp_pcb_release(struct udp_pcb *pcb)
+{
+
+}
+
+static struct udp_pcb *
+udp_pcb_select(ip_addr_t addr, uint16_t port)
+{
+
+}
+
+static struct udp_pcb *
+udp_pcb_get(int id)
+{
+
+}
+
+static int
+udp_pcb_id(struct udp_pcb *pcb)
+{
+
 }
 
 static void
@@ -123,4 +173,22 @@ udp_init(void)
 {
     ip_protocol_register(IP_PROTOCOL_UDP, udp_input);
     return 0;
+}
+
+int
+udp_open(void)
+{
+
+}
+
+int
+udp_close(int id)
+{
+
+}
+
+int
+udp_bind(int id, struct ip_endpoint *local)
+{
+    
 }
