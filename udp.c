@@ -183,7 +183,7 @@ udp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct 
         return;
     }
 
-    entry = memory_alloc(sizeof(*entry));
+    entry = memory_alloc(sizeof(*entry) + len - sizeof(*hdr));
     if (!entry) {
         errorf("memory_alloc() failure");
         return;
@@ -191,8 +191,8 @@ udp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct 
     entry->foreign.addr = src;
     entry->foreign.port = hdr->src;
     entry->len = len - sizeof(*hdr);
-    memcpy(entry->data, data+sizeof(*hdr), len - sizeof(*hdr));
-    // memcpy(entry + 1, hdr+1, len - sizeof(*hdr));
+    // memcpy(entry->data, data+sizeof(*hdr), len - sizeof(*hdr));
+    memcpy(entry + 1, hdr+1, len - sizeof(*hdr));
 
     queue_push(&(pcb->queue), entry);
 
@@ -382,7 +382,8 @@ udp_recvfrom(int id, uint8_t *buf, size_t size, struct ip_endpoint *foreign)
         *foreign = entry->foreign;
     }
     len = MIN(size, entry->len);
-    memcpy(buf, entry->data, len);
+    // memcpy(buf, entry->data, len);
+    memcpy(buf, entry + 1, len);
     memory_free(entry);
     return len;
 }
