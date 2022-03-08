@@ -27,7 +27,8 @@ setup(void)
     struct net_device *dev;
     struct ip_iface *iface;
 
-    signal(SIGINT, on_signal);
+    // あらかじめ設定されたシグナルが飛んできたら, カーネルが登録されたハンドラを呼び出す. (元のプロセスに割り込む形で実行され, 実行後は元に戻る)
+    signal(SIGINT, on_signal); // ctrl + c のときに終了のフラグのterminateを変更するだけのハンドラの登録
     if (net_init() == -1) {
         errorf("net_init() failure");
         return -1;
@@ -76,6 +77,8 @@ main(int argc, char *argv[])
     dst = src;
     id = getpid() % UINT16_MAX;
     while (!terminate) {
+        // test_dataはicmp, ipヘッダがついた状態のもの, それらのデータは自分でつけるため, *dataではtest_dataの先頭からヘッダー分だけ進めておく, またlenも同様にヘッダー分だけ削る
+        // test_data + offsetは　uint8_tなのでアドレスの演算は1byteずつ進む
         if (icmp_output(ICMP_TYPE_ECHO, 0, hton32(id << 16 | ++seq), test_data + offset, sizeof(test_data) - offset, src, dst) == -1) {
             errorf("icmp_output() failure");
             break;

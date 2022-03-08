@@ -71,6 +71,7 @@ intr_thread(void *arg)
     debugf("start...");
     pthread_barrier_wait(&barrier);
     while (!terminate) {
+        // sigmaskで設定したsigが飛んでくるまで待機する, 飛んできたら&sigにそのsignal idを入れて, 進める？？
         err = sigwait(&sigmask, &sig);
         if (err) {
             errorf("sigwait() %s", strerror(err));

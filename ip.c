@@ -103,10 +103,12 @@ ip_iface_register(struct net_device *dev, struct ip_iface *iface)
     
 
     // Ex 7-4
+    // net_deviceに登録するのはipv4, ipv6をインターフェースとして持っているかだけ, 細かいアドレスの情報などは載せない
     if (net_device_add_iface(dev, NET_IFACE(iface)) == -1) {
         errorf("net_devide_add_iface() failure");
         return -1;
     }
+    // ip.cでどんなインターフェースを持っているかを管理(デバイスに関係なく)
     iface->next = ifaces;
     ifaces = iface;
 
@@ -336,6 +338,7 @@ ip_output(uint8_t protocol, const uint8_t *data, size_t len, ip_addr_t src, ip_a
     char addr[IP_ADDR_STR_LEN];
     uint16_t id;
 
+    // ipのsrcが指定されており, dstが同ネットワークまたはブロードキャストアドレスであるか検証
     if (src == IP_ADDR_ANY) {
         errorf("ip routing does not implement");
         return -1;
@@ -350,6 +353,7 @@ ip_output(uint8_t protocol, const uint8_t *data, size_t len, ip_addr_t src, ip_a
             return -1;
         }
     }
+    // データにipヘッダをつけて, mtuを超えないか検証
     if (NET_IFACE(iface)->dev->mtu < IP_HDR_SIZE_MIN + len) {
         errorf("too long, dev=%s, mtu=%u < %zu",
             NET_IFACE(iface)->dev->name, NET_IFACE(iface)->dev->mtu, IP_HDR_SIZE_MIN + len);
