@@ -94,7 +94,7 @@ ip_endpoint_pton(const char *p, struct ip_endpoint *n)
         return -1;
     }
     memcpy(addr, p, sep - p);
-    if (ip_addr_pton(addr, n->addr) == -1) {
+    if (ip_addr_pton(addr, &n->addr) == -1) {
         return -1;
     }
     port = strtol(sep+1, NULL, 10);
