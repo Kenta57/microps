@@ -191,8 +191,8 @@ udp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, struct 
     entry->foreign.addr = src;
     entry->foreign.port = hdr->src;
     entry->len = len - sizeof(*hdr);
-    // memcpy(entry->data, data+sizeof(*hdr), len - sizeof(*hdr));
-    memcpy(entry + 1, hdr+1, len - sizeof(*hdr));
+    memcpy(entry->data, hdr+1, len - sizeof(*hdr));
+    // memcpy(entry + 1, hdr+1, len - sizeof(*hdr));
 
     queue_push(&(pcb->queue), entry);
 
@@ -230,7 +230,8 @@ udp_output(struct ip_endpoint *src, struct ip_endpoint *dst, const uint8_t *data
     pseudo.protocol = IP_PROTOCOL_UDP;
     pseudo.len = hton16(total);
     psum = ~cksum16((uint16_t *)&pseudo, sizeof(pseudo), 0);
-    hdr->sum = cksum16((uint16_t *)hdr, hdr->len, psum);
+    // hdr->sum = cksum16((uint16_t *)hdr, hdr->len, psum);
+    hdr->sum = cksum16((uint16_t *)hdr, total, psum);
     
     debugf("%s => %s, len=%zu (payload=%zu)",
         ip_endpoint_ntop(src, ep1, sizeof(ep1)), ip_endpoint_ntop(dst, ep2, sizeof(ep2)), total, len);
@@ -382,8 +383,8 @@ udp_recvfrom(int id, uint8_t *buf, size_t size, struct ip_endpoint *foreign)
         *foreign = entry->foreign;
     }
     len = MIN(size, entry->len);
-    // memcpy(buf, entry->data, len);
-    memcpy(buf, entry + 1, len);
+    memcpy(buf, entry->data, len);
+    // memcpy(buf, entry + 1, len);
     memory_free(entry);
     return len;
 }
