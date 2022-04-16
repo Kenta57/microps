@@ -21,7 +21,6 @@
 #define UDP_SOURCE_PORT_MIN 49152
 #define UDP_SOURCE_PORT_MAX 65535
 
-
 struct pseudo_hdr {
     uint32_t src;
     uint32_t dst;

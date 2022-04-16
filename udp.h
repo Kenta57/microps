@@ -25,5 +25,4 @@ udp_sendto(int id, uint8_t *buf, size_t len, struct ip_endpoint *foreign);
 extern ssize_t
 udp_recvfrom(int id, uint8_t *buf, size_t size, struct ip_endpoint *foreign);
 
-
 #endif
